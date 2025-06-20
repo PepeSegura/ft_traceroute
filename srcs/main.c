@@ -10,24 +10,6 @@ void sig_handler(int signum)
 	}
 }
 
-void print_stats(t_traceroute *p)
-{
-	int	packet_loss = 100;
-	if (p->send_count)
-		packet_loss = 100 - ((p->read_count * 100) / p->send_count);
-	
-
-	printf("--- %s ping statistics ---\n", p->hostname);
-	printf("%d packets transmitted, %d packets received, %d%% packet loss\n",
-		p->send_count, p->read_count, packet_loss
-	);
-	if (packet_loss == 100)
-		return ;
-	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n",
-		p->rtt_s.min, p->rtt_s.mean, p->rtt_s.max, p->rtt_s.stddev
-	);
-}
-
 void	check_help_usage(t_flag_parser *flags)
 {
 	int	pos_flag;
@@ -83,9 +65,9 @@ int main(int argc, char **argv)
 
 	init_t_traceroute(&t, flags.extra_args[flags.extra_args_count - 1], &flags);
 
-	for (size_t hops = t.start_hop; hops < t.max_hops; hops++)
+	for (int hops = t.start_hop; hops < t.max_hops; hops++)
 	{
-		for (size_t times = 0; times < t.send_limit; times++)
+		for (int times = 0; times < t.send_limit; times++)
 		{
 			send_packet(&t);
 			recv_packet(&t);
@@ -94,7 +76,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	print_stats(&t);
 	close(t.server_sock);
 	free(t.ip_addr);
 	cleanup_parser(&flags);

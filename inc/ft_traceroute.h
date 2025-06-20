@@ -47,7 +47,7 @@ typedef struct s_rtt_stats {
 	double	stddev;
 } t_rtt_stats;
 
-typedef struct s_ping {
+typedef struct {
 	t_flag_parser	*flags;
 
 	char			*hostname;
@@ -55,6 +55,8 @@ typedef struct s_ping {
 	int				socket_type;
 	int				server_sock;
 
+	int				send_count;
+	int				read_count;
 	int				send_limit;
 	int				dest_port;
 	int				max_hops;
