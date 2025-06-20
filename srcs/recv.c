@@ -2,7 +2,40 @@
 
 #include <netinet/ip.h>
 
-void recv_packet(t_traceroute *p)
+void	handle_timeout(t_traceroute *t)
+{
+	if (errno != EINTR)
+	{
+		if (t->current_try == 1) {
+			printf("%4d   *", t->current_hop);
+		} else
+			printf("  *");
+		if (t->current_try == t->tries)
+			printf("\n");
+	}
+}
+
+void	print_hop_info(t_traceroute *t, char *ip_str, struct timeval *time)
+{
+	char	*dns_str = NULL;
+	double	rtt_ms = time_diff(time);
+
+	if (t->resolve_hostnames)
+		dns_str = reverse_dns_lookup(ip_str);
+    if (t->current_try == 1)
+	{
+        if (t->resolve_hostnames && dns_str)
+            printf("%4d   %s (%s)", t->current_hop, ip_str, dns_str);
+        else
+            printf("%4d   %s", t->current_hop, ip_str);
+    }
+    printf("  %.3fms", rtt_ms);
+    if (t->current_try == t->tries)
+		printf("\n");
+	free(dns_str);
+}
+
+void recv_packet(t_traceroute *t)
 {
 	while (1)
 	{
@@ -12,64 +45,37 @@ void recv_packet(t_traceroute *p)
 		socklen_t			src_len = sizeof(src_addr);
 
 		int ret_recv = recvfrom(
-			p->server_sock, response, sizeof(response), 0,
+			t->server_sock, response, sizeof(response), 0,
 			(struct sockaddr *)&src_addr, &src_len
 		);
 		if (ret_recv < 0)
 		{
-			if (errno != EINTR)
-				perror("recvfrom ret < 0");
+			handle_timeout(t);
 			break ;
 		}
 
-		uint8_t			ttl = 0;
 		struct icmphdr	*icmp_hdr = (struct icmphdr *)response;
 		struct iphdr	*iphdr = (struct iphdr *)response;
 	
-		int	pkt_size = DEFAULT_READ;
-
-		if (p->socket_type == TYPE_RAW)
+		if (t->socket_type == TYPE_RAW)
 		{
-			ttl = iphdr->ttl;
 			icmp_hdr = (struct icmphdr *)(response + (iphdr->ihl << 2));
-			pkt_size = ntohs(iphdr->tot_len) - (iphdr->ihl << 2) - (sizeof(struct icmphdr) << 1);
 		}
+
+		char *ip_dest_str = inet_ntoa(src_addr.sin_addr);
 
 		if (icmp_hdr->type == ICMP_TIME_EXCEEDED)
 		{
-			char *ip_dest_str = inet_ntoa(src_addr.sin_addr);
-			char *dns_lookup_str = reverse_dns_lookup(ip_dest_str);
-
-			if (pkt_size < 32) pkt_size = 32;
-	
-			printf("%d bytes from: %s (%s): Time to live exceeded\n", pkt_size, dns_lookup_str, ip_dest_str);
-			free(dns_lookup_str);
+			print_hop_info(t, ip_dest_str, &t->time_send);
 			break;
 		}
-		if (icmp_hdr->type != ICMP_ECHOREPLY) continue ;
+		if (icmp_hdr->type == ICMP_ECHOREPLY && t->current_try == t->tries) finish = true;
 
-		if (p->socket_type == TYPE_RAW && icmp_hdr->un.echo.id != htons(getpid()))
-		{
-			dprintf(2, "Invalid ID\n");
-			continue ;
-		}
-
-		p->read_count++;
+		if (t->socket_type == TYPE_RAW && icmp_hdr->un.echo.id != htons(getpid())) continue ;
 
 		t_payload *payload = (t_payload *)(icmp_hdr + 1);
 
-		double rtt_ms = time_diff(&payload->timestamp);
-
-		if (rtt_ms > p->rtt_s.max) p->rtt_s.max = rtt_ms;
-		if (rtt_ms < p->rtt_s.min) p->rtt_s.min = rtt_ms;
-		
-		printf("%d bytes from %s: icmp_seq=%d ttl=%d time=%.3f ms\n",
-			pkt_size,
-			inet_ntoa(src_addr.sin_addr),
-			ntohs(icmp_hdr->un.echo.sequence),
-			ttl,
-			rtt_ms
-		);
+		print_hop_info(t, ip_dest_str, &payload->timestamp);
 		break ;
 	}
 }

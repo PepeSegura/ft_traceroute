@@ -9,7 +9,7 @@ LIBS		= -lm
 
 CC = gcc
 
-DEBUG        = -g3 -fsanitize=address
+DEBUG        = -g3 #-fsanitize=address
 
 CPPFLAGS     = -MMD
 

@@ -63,34 +63,101 @@ void create_server_socket(t_traceroute *t)
 
 		fcntl(server_fd, F_SETFL, socket_flags & ~O_NONBLOCK); // Disable non-blocking
 
-		struct timeval tv = {.tv_sec = 2, .tv_usec = 0};
+		struct timeval tv = {.tv_sec = t->wait_time, .tv_usec = 0};
 		setsockopt(server_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)); // set 2 secs timeout
 	t->server_sock = server_fd;
 }
 
-void set_count(t_traceroute *t, int pos_flag)
-{
-	int argc = t->flags->flags[pos_flag].args_count - 1;
+# define HELP_MODE 1
+# define USAGE_MODE 2
 
-	t->send_limit = atoi(t->flags->flags[pos_flag].args[argc]);
-	if (t->send_limit == 0)
-		t->send_limit = UINT32_MAX;
+void	handle_help_and_usage(t_traceroute *t, int mode)
+{
+	switch (mode)
+	{
+		case HELP_MODE:
+			printf("%s\n", HELP);
+			break;
+		case USAGE_MODE:
+			printf("%s\n", USAGE);
+			break;
+		default:
+			break;
+	}
+	cleanup_parser(t->flags);
+	exit(EXIT_SUCCESS);
 }
 
-void set_ttl(t_traceroute *t, int pos_flag)
+void	set_first_hop(t_traceroute *t, int pos_flag)
 {
-	int argc = t->flags->flags[pos_flag].args_count - 1;
+	int last_arg_pos = t->flags->flags[pos_flag].args_count - 1;
 
-	t->custom_ttl = atoi(t->flags->flags[pos_flag].args[argc]);
-	if (t->custom_ttl < MIN_TTL)
+	char *arg = t->flags->flags[pos_flag].args[last_arg_pos];
+	t->first_hop = atoi(arg);
+	if (t->first_hop <= 0 || t->first_hop >= 256)
 	{
-		dprintf(2, "ft_traceroute: value too smal: %d\n", t->custom_ttl);
+		dprintf(2, "ft_traceroute: imposible distance `%s'\n", arg);
 		cleanup_parser(t->flags);
 		exit(EXIT_FAILURE);
 	}
-	if (t->custom_ttl > MAX_TTL)
+}
+
+void	set_max_hop(t_traceroute *t, int pos_flag)
+{
+	int last_arg_pos = t->flags->flags[pos_flag].args_count - 1;
+
+	char *arg = t->flags->flags[pos_flag].args[last_arg_pos];
+	t->max_hop = atoi(arg);
+	if (t->max_hop <= 0 || t->max_hop >= 256)
 	{
-		dprintf(2, "ft_traceroute: value too big: %d\n", t->custom_ttl);
+		dprintf(2, "ft_traceroute: invalid hops value `%s'\n", arg);
+		cleanup_parser(t->flags);
+		exit(EXIT_FAILURE);
+	}
+}
+
+void	set_dest_port(t_traceroute *t, int pos_flag)
+{
+	int last_arg_pos = t->flags->flags[pos_flag].args_count - 1;
+
+	char *arg = t->flags->flags[pos_flag].args[last_arg_pos];
+	t->dest_port = atoi(arg);
+	if (t->dest_port <= 0 || t->dest_port >= 65536)
+	{
+		dprintf(2, "ft_traceroute: invalid port number `%s'\n", arg);
+		cleanup_parser(t->flags);
+		exit(EXIT_FAILURE);
+	}
+}
+
+void	set_tries(t_traceroute *t, int pos_flag)
+{
+	int last_arg_pos = t->flags->flags[pos_flag].args_count - 1;
+
+	char *arg = t->flags->flags[pos_flag].args[last_arg_pos];
+	t->tries = atoi(arg);
+	if (t->tries <= 0 || t->tries > 10)
+	{
+		dprintf(2, "ft_traceroute: number of tries should be between 1 and 10\n");
+		cleanup_parser(t->flags);
+		exit(EXIT_FAILURE);
+	}
+}
+
+void set_resolve_hostnames(t_traceroute *t)
+{
+	t->resolve_hostnames = true;
+}
+
+void	set_wait(t_traceroute *t, int pos_flag)
+{
+	int last_arg_pos = t->flags->flags[pos_flag].args_count - 1;
+
+	char *arg = t->flags->flags[pos_flag].args[last_arg_pos];
+	t->wait_time = atoi(arg);
+	if (t->wait_time < 1 || t->wait_time > 60)
+	{
+		dprintf(2, "ft_traceroute: ridiculous waiting time `%s'\n", arg);
 		cleanup_parser(t->flags);
 		exit(EXIT_FAILURE);
 	}
@@ -100,18 +167,22 @@ void    check_flags(t_traceroute *t)
 {
 	int	pos_flag;
 
-	if ((pos_flag = check_flag(t->flags, '?', "help"))       != -1) {
-		printf("%s\n", HELP);
-		cleanup_parser(t->flags);
-		exit(EXIT_SUCCESS);
-	} if ((pos_flag = check_flag(t->flags, 0, "usage"))      != -1) {
-		printf("%s\n", USAGE);
-		cleanup_parser(t->flags);
-		exit(EXIT_SUCCESS);
-	} if ((pos_flag = check_flag(t->flags, 'c', "count"))    != -1) {
-		set_count(t, pos_flag);
-	} if ((pos_flag = check_flag(t->flags, 0, "ttl"))        != -1) {
-		set_ttl(t, pos_flag);
+	if (check_flag(t->flags, '?', "help")  != -1) {
+		handle_help_and_usage(t, HELP_MODE);
+	} if (check_flag(t->flags, 0, "usage") != -1) {
+		handle_help_and_usage(t, USAGE_MODE);
+	} if ((pos_flag = check_flag(t->flags, 'f', "first-hop")) != -1) {
+		set_first_hop(t, pos_flag);
+	} if ((pos_flag = check_flag(t->flags, 'm', "max-hop")) != -1) {
+		set_max_hop(t, pos_flag);
+	} if ((pos_flag = check_flag(t->flags, 'p', "port")) != -1) {
+		set_dest_port(t, pos_flag);
+	} if ((pos_flag = check_flag(t->flags, 'q', "tries")) != -1) {
+		set_tries(t, pos_flag);
+	} if (check_flag(t->flags, 0, "resolve-hostnames") != -1) {
+		set_resolve_hostnames(t);
+	} if ((pos_flag = check_flag(t->flags, 'w', "wait")) != -1) {
+		set_wait(t, pos_flag);
 	}
 
 	if (t->flags->extra_args_count < 1)
@@ -121,20 +192,20 @@ void    check_flags(t_traceroute *t)
 		cleanup_parser(t->flags);
 		exit(EXIT_FAILURE);
 	}
-
-	if (check_flag(t->flags, 'f', "flood") != -1 && check_flag(t->flags, 'i', "interval") != -1)
-	{
-		dprintf(2, "ft_traceroute: -f and -i incompatible options\n");
-		cleanup_parser(t->flags);
-		exit(EXIT_FAILURE);
-	}
 }
 
 void    init_t_traceroute(t_traceroute *t, char *host, t_flag_parser *flags)
 {
-	t->custom_ttl = -1;
-	t->send_limit = UINT32_MAX;
+	setbuf(stdout, NULL);
 	t->flags = flags;
+
+	t->current_hop = 1;
+	t->first_hop = 1;
+	t->max_hop = 64;
+	t->dest_port = 33434;
+	t->tries = 3;
+	t->resolve_hostnames = false;
+	t->wait_time = 3;
 
 	check_flags(t);
 
@@ -143,9 +214,5 @@ void    init_t_traceroute(t_traceroute *t, char *host, t_flag_parser *flags)
 
 	create_server_socket(t);
 
-	gettimeofday(&t->time_start, NULL);
-	t->rtt_s.max = (double)INT64_MIN;
-	t->rtt_s.min = (double)INT64_MAX;
-
-	printf("t %s (%s): 56 data bytes\n", t->hostname, t->ip_addr);
+	printf("traceroute to %s (%s), %d hops max\n", t->hostname, t->ip_addr, t->max_hop);
 }

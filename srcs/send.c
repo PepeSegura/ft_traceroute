@@ -23,9 +23,9 @@ void send_packet(t_traceroute *p)
 		.sin_addr.s_addr	= inet_addr(p->ip_addr),
 	};
 
-	if (p->custom_ttl != -1)
+	if (p->first_hop != -1)
 	{
-		if (setsockopt(p->server_sock, IPPROTO_IP, IP_TTL, &p->custom_ttl, sizeof(p->custom_ttl)) < 0)
+		if (setsockopt(p->server_sock, IPPROTO_IP, IP_TTL, &p->first_hop, sizeof(p->first_hop)) < 0)
 		{
 			perror("setsockopt TTL failed");
 			close(p->server_sock);
@@ -46,5 +46,5 @@ void send_packet(t_traceroute *p)
 		free(p->ip_addr);
 		exit(1);
 	}
-	p->send_count++;
+	gettimeofday(&p->time_send, NULL);
 }

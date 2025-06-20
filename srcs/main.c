@@ -7,6 +7,7 @@ void sig_handler(int signum)
 	if (signum == SIGINT)
 	{
 		finish = true;
+		write(1, "\n", 1);
 	}
 }
 
@@ -57,7 +58,7 @@ int main(int argc, char **argv)
 
 	parse(&flags);
 	check_help_usage(&flags);
-	print_parsed_flags(&flags);
+	// print_parsed_flags(&flags);
 
 	t_traceroute t;
 
@@ -65,18 +66,19 @@ int main(int argc, char **argv)
 
 	init_t_traceroute(&t, flags.extra_args[flags.extra_args_count - 1], &flags);
 
-	for (int hops = t.start_hop; hops < t.max_hops; hops++)
+	for (; t.current_hop <= t.max_hop && finish == false; t.first_hop++)
 	{
-		for (int times = 0; times < t.send_limit; times++)
+		for (t.current_try = 1; t.current_try <= t.tries && finish == false; t.current_try++)
 		{
 			send_packet(&t);
 			recv_packet(&t);
-			if (finish == false)
-				usleep(t.wait_time * 1000 * 1000);
+			if (finish == true)
+				break ;
 		}
+		t.current_hop++;
 	}
 
-	close(t.server_sock);
+	close(t.server_sock); 
 	free(t.ip_addr);
 	cleanup_parser(&flags);
 	return (0);

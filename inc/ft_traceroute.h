@@ -33,20 +33,6 @@ enum sock_type {
 	TYPE_DGRAM,
 };
 
-# define DEFAULT_READ 64
-# define DEFAULT_ERR 92
-
-typedef struct s_rtt_stats {
-	int		total_count;
-
-	double	min;
-	double	max;
-	double	m2;
-
-	double	mean;
-	double	stddev;
-} t_rtt_stats;
-
 typedef struct {
 	t_flag_parser	*flags;
 
@@ -55,25 +41,22 @@ typedef struct {
 	int				socket_type;
 	int				server_sock;
 
-	int				send_count;
-	int				read_count;
-	int				send_limit;
-	int				dest_port;
-	int				max_hops;
-	int				start_hop;
-	int				wait_time;
-	int				resolve_hostnames;
+	int				current_try;
+	int				current_hop;
+
+	int				first_hop;			// -f --first-hop
+	int				max_hop;			// -m --max-hop
+	int				dest_port;			// -p --port
+	int				tries;				// -q --tries
+	int				resolve_hostnames;	// --resolve-hostnames
+	int				wait_time;			// -w --wait
 
 	int     		sequence;
 	int				custom_ttl;
 
-	t_rtt_stats		rtt_s;
-
-	struct timeval	time_start;
-	struct timeval	time_last;
+	struct timeval	time_send;
 
 }	t_traceroute;
-
 
 extern bool finish;
 

@@ -48,11 +48,11 @@ char *reverse_dns_lookup(char *ip_address_str)
 	sa.sin_family = AF_INET;
 	if (inet_pton(AF_INET, ip_address_str, &sa.sin_addr) != 1) {
 		perror("inet_pton failed");
-		return NULL;
+		return (NULL);
 	}
 
 	int res = getnameinfo((struct sockaddr *)&sa, sizeof(sa), host, sizeof(host), NULL, 0, NI_NAMEREQD);
 	if (res != 0)
-		return NULL;
+		return (strdup(ip_address_str));
 	return (strdup(host));
 }
