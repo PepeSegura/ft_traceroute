@@ -94,7 +94,7 @@ void	set_first_hop(t_traceroute *t, int pos_flag)
 
 	char *arg = t->flags->flags[pos_flag].args[last_arg_pos];
 	t->first_hop = atoi(arg);
-	if (t->first_hop <= 0 || t->first_hop >= 256)
+	if (t->first_hop < MIN_HOPS || t->first_hop > MAX_HOPS)
 	{
 		dprintf(2, "ft_traceroute: imposible distance `%s'\n", arg);
 		cleanup_parser(t->flags);
@@ -108,7 +108,7 @@ void	set_max_hop(t_traceroute *t, int pos_flag)
 
 	char *arg = t->flags->flags[pos_flag].args[last_arg_pos];
 	t->max_hop = atoi(arg);
-	if (t->max_hop <= 0 || t->max_hop >= 256)
+	if (t->max_hop < MIN_HOPS || t->max_hop > MAX_HOPS)
 	{
 		dprintf(2, "ft_traceroute: invalid hops value `%s'\n", arg);
 		cleanup_parser(t->flags);
@@ -136,7 +136,7 @@ void	set_tries(t_traceroute *t, int pos_flag)
 
 	char *arg = t->flags->flags[pos_flag].args[last_arg_pos];
 	t->tries = atoi(arg);
-	if (t->tries <= 0 || t->tries > 10)
+	if (t->tries < MIN_TRIES || t->tries > MAX_TRIES)
 	{
 		dprintf(2, "ft_traceroute: number of tries should be between 1 and 10\n");
 		cleanup_parser(t->flags);
@@ -155,7 +155,7 @@ void	set_wait(t_traceroute *t, int pos_flag)
 
 	char *arg = t->flags->flags[pos_flag].args[last_arg_pos];
 	t->wait_time = atoi(arg);
-	if (t->wait_time < 1 || t->wait_time > 60)
+	if (t->wait_time < MIN_WAIT || t->wait_time > MAX_WAIT)
 	{
 		dprintf(2, "ft_traceroute: ridiculous waiting time `%s'\n", arg);
 		cleanup_parser(t->flags);

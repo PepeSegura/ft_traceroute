@@ -66,6 +66,12 @@ extern bool finish;
 # define MAX_TTL 255
 # define MIN_RUNTIME 0
 # define MAX_RUNTIME INT32_MAX
+# define MIN_HOPS 1
+# define MAX_HOPS 255
+# define MIN_TRIES 1
+# define MAX_TRIES 10
+# define MIN_WAIT 1
+# define MAX_WAIT 60
 
 typedef struct s_payload{
 	uint16_t		sequence;
@@ -73,10 +79,10 @@ typedef struct s_payload{
 	char			data[PING_PKT_SIZE - sizeof(uint16_t) - sizeof(struct timeval)];
 } t_payload;
 
-typedef struct s_packet {
+typedef struct {
 	struct icmphdr	hdr;
 	t_payload		payload;
-}   t_packet;
+}   t_icmp_packet;
 
 typedef uint8_t byte;
 

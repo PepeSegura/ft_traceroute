@@ -1,11 +1,11 @@
 #include "ft_traceroute.h"
 
-void send_packet(t_traceroute *p)
+void send_packet(t_traceroute *t)
 {
-	t_packet	pkt;
-	size_t		curr_sequence = p->sequence++;
+	t_icmp_packet	pkt;
+	size_t		curr_sequence = t->sequence++;
 	
-	memset(&pkt, 0, sizeof(t_packet));
+	memset(&pkt, 0, sizeof(t_icmp_packet));
 	
 	pkt.hdr.type = ICMP_ECHO; // 8 = echo request - 0 = echo reply
 	pkt.hdr.code = 0;
@@ -20,31 +20,31 @@ void send_packet(t_traceroute *p)
 
 	struct sockaddr_in dest_addr = {
 		.sin_family		 	= AF_INET,
-		.sin_addr.s_addr	= inet_addr(p->ip_addr),
+		.sin_addr.s_addr	= inet_addr(t->ip_addr),
 	};
 
-	if (p->first_hop != -1)
+	if (t->first_hop != -1)
 	{
-		if (setsockopt(p->server_sock, IPPROTO_IP, IP_TTL, &p->first_hop, sizeof(p->first_hop)) < 0)
+		if (setsockopt(t->server_sock, IPPROTO_IP, IP_TTL, &t->first_hop, sizeof(t->first_hop)) < 0)
 		{
 			perror("setsockopt TTL failed");
-			close(p->server_sock);
-			free(p->ip_addr);
+			close(t->server_sock);
+			free(t->ip_addr);
 			exit(1);
 		}
 	}
 
 	int ret_send = sendto(
-		p->server_sock, &pkt, sizeof(pkt), 0,
+		t->server_sock, &pkt, sizeof(pkt), 0,
 		(struct sockaddr *)&dest_addr, sizeof(dest_addr)
 	);
 
 	if (ret_send < 0)
 	{
 		perror("sendto");
-		close(p->server_sock);
-		free(p->ip_addr);
+		close(t->server_sock);
+		free(t->ip_addr);
 		exit(1);
 	}
-	gettimeofday(&p->time_send, NULL);
+	gettimeofday(&t->time_send, NULL);
 }
